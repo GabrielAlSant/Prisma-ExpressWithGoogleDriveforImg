@@ -5,6 +5,18 @@ import { google } from 'googleapis';
 import stream from 'stream';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt'
+import jwt, { JwtPayload } from 'jsonwebtoken'
+import dotenv from 'dotenv'
+dotenv.config();
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      [key: string]: string | undefined;
+      SECRET: string;
+    }
+  }
+}
 
 const prisma = new PrismaClient();
 
@@ -14,6 +26,25 @@ const GOOGLE_API_FOLDER_ID = "1xh_JAOk1tXbrfPatCtNMhSFqm6P0Jlg2";
 
 const storage = multer.memoryStorage(); 
 const upload = multer({ storage: storage });
+
+
+function checkToken(req: { headers: { [x: string]: string; }; }, res: any, next: any){
+  const authHeader = req.headers['authorization'] as string;
+  const token = authHeader && authHeader.split(" ")[1]
+  if(!token){
+    return res.json(401)
+  }
+
+  try {
+    const secret = process.env.SECRET
+    jwt.verify(token, secret)
+    console.log('foi')
+    next()
+  } catch (error) {
+    res.json("Token Invalido")
+  }
+}
+
 
 app.use(express.json());
 
@@ -34,11 +65,28 @@ app.get("/user", async function (req, res) {
 });
 
 
-app.post("/getuser", async function (req, res) {
+app.post("/getuser", checkToken, async function (req: { body: { token: any; }; }, res: { json: (arg0: { id: number; name: string; email: string; password: string; img: string; } | null) => void; }) {
   try {
-    const {id} = req.body
-    const user = await prisma.user.findUnique({ where: { id:  Number(id)} });
-    res.json(user)
+    const {token} = req.body
+    const secret = process.env.SECRET
+
+    if (!token) {
+      return console.error('Token não encontrado na requisição.');
+    }
+
+   jwt.verify(token, secret, async (err:any, decoded: string | JwtPayload | undefined) => {
+      if (err) {
+          console.error('Erro ao decodificar o token:', err);
+      } else {
+          if (typeof decoded === 'string') {
+              console.log('Token decodificado, mas sem payload:', decoded);
+          } else {
+              const userId = decoded?.id;
+              const user = await prisma.user.findUnique({ where: { id:  Number(userId)} });
+              res.json(user)
+          }
+      }
+  });
   }catch (err) {
     console.error('Erro ao validar Usuario', err);  
     }
@@ -47,6 +95,7 @@ app.post("/getuser", async function (req, res) {
 
 app.post("/user/login", async function (req, res) {
   try {
+   
     const { email, password } = req.body;
     const userExists = await prisma.user.findUnique({ where: { email: email } });
     if (!userExists) {
@@ -56,7 +105,16 @@ app.post("/user/login", async function (req, res) {
      if (!checkPassword) {
       return  res.json({ status:401 });
     } else {
-      return res.json({ status: 200, data: userExists });
+      const secret = process.env.SECRET
+      const token = jwt.sign(
+        { 
+          id: userExists.id,
+         }, 
+         secret
+         ,
+         )
+      
+      return res.json({ status: 200, data: userExists, token });
     }
   } catch (err) {
     console.error('Erro ao validar login', err);
