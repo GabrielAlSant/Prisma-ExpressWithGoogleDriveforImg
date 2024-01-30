@@ -67,9 +67,9 @@ app.get("/user", async function (req, res) {
 
 app.post("/getuser", checkToken, async function (req: { body: { token: any; }; }, res: { json: (arg0: { id: number; name: string; email: string; password: string; img: string; } | null) => void; }) {
   try {
-    const {token} = req.body
+    const {token} = req.body;
     const secret = process.env.SECRET
-
+    console.log(token)
     if (!token) {
       return console.error('Token não encontrado na requisição.');
     }
