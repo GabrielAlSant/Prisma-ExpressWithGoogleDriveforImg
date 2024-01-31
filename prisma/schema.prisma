@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -22,7 +23,8 @@ model Post {
   title     String
   content   String?
   img       String?
-  published Boolean @default(false)
+  published Boolean @default(true)
+  postDate   DateTime @default(now())
   author    User    @relation(fields: [authorId], references: [id])
   authorId  Int
 }

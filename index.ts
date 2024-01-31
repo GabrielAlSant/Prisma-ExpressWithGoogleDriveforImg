@@ -38,10 +38,9 @@ function checkToken(req: { headers: { [x: string]: string; }; }, res: any, next:
   try {
     const secret = process.env.SECRET
     jwt.verify(token, secret)
-    console.log('foi')
     next()
   } catch (error) {
-    res.json("Token Invalido")
+    res.json(401)
   }
 }
 
@@ -55,7 +54,11 @@ app.get('/', function(req, res){
 
 
 app.get("/post", async function (req, res) {
-  const mostrar = await prisma.post.findMany();
+  const mostrar = await prisma.post.findMany({
+    include: {
+      author: true,
+    },
+  });
   res.json(mostrar);
 });
 
@@ -69,7 +72,6 @@ app.post("/getuser", checkToken, async function (req: { body: { token: any; }; }
   try {
     const {token} = req.body;
     const secret = process.env.SECRET
-    console.log(token)
     if (!token) {
       return console.error('Token não encontrado na requisição.');
     }
@@ -110,7 +112,8 @@ app.post("/user/login", async function (req, res) {
         { 
           id: userExists.id,
          }, 
-         secret
+         secret,
+         {expiresIn: '1d'}
          ,
          )
       
