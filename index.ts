@@ -151,6 +151,70 @@ app.post("/user/login", async function (req, res) {
   });
 
 
+  app.put("/user", upload.single('img'), async function (req, res) {
+    try {
+      const { name, email, password, lastPassword } = req.body;
+      
+      const userExists = await prisma.user.findUnique({ where: { email: email } });
+      let link
+      let passwordHash 
+      let imageBuffer
+
+      if(!userExists){
+        return res.json(404)
+      }
+
+      if(lastPassword){ 
+      const checkPassword = await bcrypt.compare(lastPassword, userExists!.password)
+
+      if (!checkPassword) {
+        console.log("senha antiga incorreta")
+        return  res.json(401);
+        
+      }
+      const salt = await bcrypt.genSalt(13)
+      console.log(password)
+      passwordHash = await bcrypt.hash(password, salt)
+
+    }
+     
+    if(!lastPassword){
+      passwordHash = userExists.password
+    }
+      
+
+        
+      imageBuffer = req.file!.buffer || null
+
+      if(imageBuffer){
+       link = await uploadFile(name, imageBuffer);
+      }
+
+      if (imageBuffer) {
+        const idMatch = userExists.img.match(/id=(.*)/);
+    
+        if (idMatch && idMatch[1]) {
+            const idImg: string = idMatch[1];
+            deleteFileGoogleDrive(idImg)
+        } else {
+            console.log("Nenhum número encontrado após 'id='");
+        }
+    }
+
+      const updateuser = await prisma.user.update({
+        data: { name : name || userExists!.name, email: email, password: passwordHash , img: link || userExists.img },
+        where: {email: email}
+      });
+  
+      res.json(updateuser);
+
+    } catch (err) {
+      console.error('Error creating user', err);
+      res.status(500).json({ error: 'Error creating user' });
+    }
+  });
+
+
 
 
    
@@ -207,6 +271,22 @@ app.post("/user/login", async function (req, res) {
     }
   }
   
+  const deleteFileGoogleDrive = async (fileId: string) => {
+    
+    const auth = new google.auth.GoogleAuth({
+        keyFile: './drive.json',
+        scopes: ['https://www.googleapis.com/auth/drive']
+    })
+    const driveService = google.drive({ version: 'v3', auth })
+
+    try {
+        await driveService.files.delete({ fileId });
+       
+    } catch (error) {
+        console.error(`Ocorreu um erro ao excluir o arquivo: ${error}`);
+    }
+}
+
   app.listen(3000, () => {
     console.log('Server is running on port 3000');
   });
