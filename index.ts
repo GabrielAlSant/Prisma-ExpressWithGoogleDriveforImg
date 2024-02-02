@@ -176,33 +176,25 @@ app.post("/user/login", async function (req, res) {
       console.log(password)
       passwordHash = await bcrypt.hash(password, salt)
 
-    }
-     
-    if(!lastPassword){
+    }else{
       passwordHash = userExists.password
     }
-      
-
-        
-      imageBuffer = req.file!.buffer || null
-
-      if(imageBuffer){
-       link = await uploadFile(name, imageBuffer);
-      }
-
-      if (imageBuffer) {
+      if(req.file?.buffer){
+        imageBuffer = req.file!.buffer
+        link = await uploadFile(name, imageBuffer);
         const idMatch = userExists.img.match(/id=(.*)/);
-    
         if (idMatch && idMatch[1]) {
             const idImg: string = idMatch[1];
             deleteFileGoogleDrive(idImg)
         } else {
             console.log("Nenhum número encontrado após 'id='");
         }
+    }else{
+      link = userExists.img
     }
 
       const updateuser = await prisma.user.update({
-        data: { name : name || userExists!.name, email: email, password: passwordHash , img: link || userExists.img },
+        data: { name : name || userExists!.name, email: email, password: passwordHash , img: link },
         where: {email: email}
       });
   
