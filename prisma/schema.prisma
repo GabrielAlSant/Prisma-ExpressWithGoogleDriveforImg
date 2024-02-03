@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["relationJoins"]
 }
 
@@ -8,23 +8,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id    Int     @id @default(autoincrement())
-  name  String
-  email String  @unique
-  password  String
-  img   String
-  posts Post[]
+  id       Int       @id @default(autoincrement())
+  name     String
+  email    String    @unique
+  password String
+  img      String
+  posts    Post[]
+  comments Comment[]
 }
 
 model Post {
-  id        Int     @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   title     String
   content   String?
   img       String?
-  published Boolean @default(true)
-  postDate   DateTime @default(now())
-  author    User    @relation(fields: [authorId], references: [id])
+  published Boolean   @default(true)
+  postDate  DateTime  @default(now())
+  author    User      @relation(fields: [authorId], references: [id])
   authorId  Int
+  commensts Comment[]
+}
+
+model Comment {
+  id       Int    @id @default(autoincrement())
+  text     String
+  postDate  DateTime  @default(now())
+  author   User   @relation(fields: [authorId], references: [id])
+  authorId Int
+  post     Post   @relation(fields: [postId], references: [id])
+  postId   Int
 }

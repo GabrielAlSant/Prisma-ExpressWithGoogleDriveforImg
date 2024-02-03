@@ -56,14 +56,26 @@ app.get('/', function(req, res){
 app.get("/post", async function (req, res) {
   const mostrar = await prisma.post.findMany({
     include: {
-      author: true,
-    },
+      author:true,
+      commensts:{
+        include: {
+          author: true,
+        },
+      },
+    },orderBy:{
+      postDate : "desc"
+    }
   });
   res.json(mostrar);
 });
 
 app.get("/user", async function (req, res) {
   const mostrar = await prisma.user.findMany();
+  res.json(mostrar);
+});
+
+app.get("/comments", async function (req, res) {
+  const mostrar = await prisma.comment.findMany();
   res.json(mostrar);
 });
 
@@ -125,6 +137,19 @@ app.post("/user/login", async function (req, res) {
   }
 });
   
+app.post("/comment", async function (req, res) {
+  try {
+    const {text, authorId, postId} = req.body;
+
+    const newcomment = await prisma.comment.create({data: {text, authorId: Number(authorId), postId: Number(postId)}})
+    res.json(newcomment)
+  } catch (error) {
+    console.error('Error creating comment', error);
+    res.status(500).json({ error: 'Error creating comment' });
+  }
+})
+
+
   app.post("/user", upload.single('img'), async function (req, res) {
     try {
       const { name, email, password } = req.body;
@@ -213,12 +238,18 @@ app.post("/user/login", async function (req, res) {
   app.post("/post", upload.single('img'), async function (req, res) {
     try {
       const { title, content, authorId } = req.body;
-      const imageBuffer = req.file!.buffer;
+      let imageBuffer
+      let link
+      if(req.file?.buffer)
+      {
+        console.log(req.file?.buffer)
+        imageBuffer = req.file!.buffer;
+        link = await uploadFile(title, imageBuffer);
+      }
+   
+      const newpost = await prisma.post.create({ data: { title, content, img: link , authorId: Number(authorId) } });
   
-      const link = await uploadFile(title, imageBuffer);
-      const novoUsuario = await prisma.post.create({ data: { title, content, img: link , authorId: Number(authorId) } });
-  
-      res.json(novoUsuario);
+      res.json(newpost);
     } catch (err) {
       console.error('Error creating user', err);
       res.status(500).json({ error: 'Error creating user' });
@@ -279,6 +310,8 @@ app.post("/user/login", async function (req, res) {
     }
 }
 
-  app.listen(3000, () => {
+
+
+  app.listen(3000, async () => {
     console.log('Server is running on port 3000');
   });
