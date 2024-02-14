@@ -16,6 +16,11 @@ model User {
   img      String
   posts    Post[]
   comments Comment[]
+  friend Friend[] @relation("friendEnv")
+  friendInvited  Friend[] @relation("friendInvited")
+  invitesEnv Invite[]@relation("Env")
+  invitesReceived Invite[]@relation("Received")
+  chatmessages ChatMessage[]
 }
 
 model Post {
@@ -25,7 +30,7 @@ model Post {
   img       String?
   published Boolean   @default(true)
   postDate  DateTime  @default(now())
-  author    User      @relation(fields: [authorId], references: [id])
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  Int
   commensts Comment[]
 }
@@ -34,8 +39,44 @@ model Comment {
   id       Int    @id @default(autoincrement())
   text     String
   postDate  DateTime  @default(now())
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId Int
-  post     Post   @relation(fields: [postId], references: [id])
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId   Int
+}
+
+model Invite{
+ id Int   @id @default(autoincrement())
+ userSend User @relation("Env",fields: [userSendId], references: [id], onDelete: Cascade)
+ userSendId Int 
+ userInvited User @relation("Received",fields: [userInvitedId], references: [id], onDelete: Cascade)
+ userInvitedId Int 
+
+}
+
+model Friend {
+ id Int  @id @default(autoincrement())
+ userEnv User @relation("friendEnv",fields: [userEnvId], references: [id], onDelete: Cascade)
+ userEnvId Int
+ invitedUser User @relation("friendInvited",fields: [invitedUserId], references: [id], onDelete: Cascade)
+ invitedUserId Int
+ chat Chat[]
+}
+
+model Chat {
+  id     Int    @id @default(autoincrement())
+  friend  Friend  @relation(fields: [friendID], references: [id], onDelete: Cascade)
+  friendID Int
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        Int     @id @default(autoincrement())
+  content   String?
+  img       String?
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId Int
+  sentDate  DateTime @default(now())
+  chat      Chat    @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chatId    Int
 }

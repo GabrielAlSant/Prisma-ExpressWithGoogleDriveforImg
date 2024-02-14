@@ -53,6 +53,12 @@ app.get('/', function(req, res){
 })
 
 
+app.get('/friend', async function (req, res) {
+  const mostrar = await prisma.friend.findMany() 
+  res.json(mostrar);
+});
+
+
 app.get("/post", async function (req, res) {
   const mostrar = await prisma.post.findMany({
     include: {
@@ -74,10 +80,125 @@ app.get("/user", async function (req, res) {
   res.json(mostrar);
 });
 
-app.get("/comments", async function (req, res) {
-  const mostrar = await prisma.comment.findMany();
+app.post("/getinvite", async function (req, res) {
+  const {id} = req.body 
+  const mostrar = await prisma.invite.findMany({
+  where:{
+    userInvitedId: id
+  },
+    include:{
+      userSend:true,
+      userInvited:true
+    }
+  });
   res.json(mostrar);
 });
+
+
+app.post("/getfriends", async function (req, res) {
+    const {id} = req.body
+    const mostrar = await prisma.user.findMany({
+      where:{
+        id: id
+      },
+     include:{
+      friend:{
+        include:{
+          userEnv:true,
+          invitedUser:true
+        }
+      }
+     }
+    });
+
+  const includeData = mostrar.map((user) => user.friend);
+
+  res.json(includeData)
+});
+
+app.get("/chat", async function (req, res) {
+  const { id } = req.body;
+  try {
+    const chats = await prisma.chat.findMany({
+      where: {
+        id: id,
+      },
+      include: {
+        friend: {
+          include: {
+            userEnv: true,
+            invitedUser: true,
+          },
+        },
+      },
+    });
+    res.json(chats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+app.get("/chatmessages", async function (req, res) {
+  const {id} = req.body
+  const mostrar = await prisma.chatMessage.findMany({
+    where:{
+      chatId : id
+    },
+    include:{
+      sender:true
+    }
+  });
+  res.json(mostrar);
+});
+
+app.post('/invite', async function (req, res) {
+ const {userSend, userInvited} = req.body
+  try {
+    const newinvite = await prisma.invite.create({data:{userSendId: Number(userSend), userInvitedId:Number(userInvited)}})
+    res.json(newinvite)
+  } catch (error) {
+    console.log(error)
+    res.json(error)
+  } 
+})
+
+app.post('/friend', async function (req, res) {
+   try {
+    const {inviteId, userEnvId, invitedUserId} = req.body
+     const newFriend = await prisma.friend.create({data:{userEnvId: Number(userEnvId), invitedUserId:Number(invitedUserId)}})
+     const newChat = await prisma.chat.create({data:{ friendID: newFriend.id}})
+     await prisma.invite.delete({where:{id:Number(inviteId)}})
+     res.json(401)
+ 
+   } catch (error) {
+     console.log(error)
+     res.json(error)
+   } 
+ })
+
+ app.post('/messages', async function (req, res) {
+  const {content, senderId, chatId} = req.body
+  let imageBuffer
+  let link
+      if(req.file?.buffer)
+      {
+        console.log(req.file?.buffer)
+        imageBuffer = req.file!.buffer;
+        link = await uploadFile(senderId, imageBuffer);
+      }
+  
+   try {
+     const newFriend = await prisma.chatMessage.create({data:{ content, img:link, senderId, chatId: Number(chatId)}})
+     res.json(newFriend)
+   } catch (error) {
+     console.log(error)
+     res.json(error)
+   } 
+ })
+
 
 
 app.post("/getuser", checkToken, async function (req: { body: { token: any; }; }, res: { json: (arg0: { id: number; name: string; email: string; password: string; img: string; } | null) => void; }) {
@@ -125,7 +246,7 @@ app.post("/user/login", async function (req, res) {
           id: userExists.id,
          }, 
          secret,
-         {expiresIn: '1d'}
+         {expiresIn: '1min'}
          ,
          )
       
