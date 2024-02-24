@@ -75,16 +75,43 @@ app.get("/post", async function (req, res) {
   res.json(mostrar);
 });
 
-app.get("/user", async function (req, res) {
-  const mostrar = await prisma.user.findMany();
+
+app.get("/postuser/:id", async function (req, res) {
+  const {id} = req.params
+  const mostrar = await prisma.post.findMany({
+    where:{
+      authorId: Number(id),
+    },
+    include: {
+      author:true,
+      commensts:{
+        include: {
+          author: true,
+        },
+      },
+    },
+     orderBy:{
+      postDate : "desc"
+    }
+  });
   res.json(mostrar);
 });
 
-app.post("/getinvite", async function (req, res) {
-  const {id} = req.body 
+app.get("/user", async function (req, res) {
+  const mostrar = await prisma.user.findMany({
+    include:{
+      friendInvited:true,
+      friend:true
+    }
+  });
+  res.json(mostrar);
+});
+
+app.get("/getinvite/:id", async function (req, res) {
+  const {id} = req.params 
   const mostrar = await prisma.invite.findMany({
   where:{
-    userInvitedId: id
+    userInvitedId: Number(id)
   },
     include:{
       userSend:true,
@@ -95,11 +122,11 @@ app.post("/getinvite", async function (req, res) {
 });
 
 
-app.post("/getfriends", async function (req, res) {
-    const {id} = req.body
+app.get("/getfriends/:id", async function (req, res) {
+    const {id} = req.params
     const mostrar = await prisma.user.findMany({
       where:{
-        id: id
+        id: Number(id)
       },
      include:{
       friend:{
@@ -116,20 +143,22 @@ app.post("/getfriends", async function (req, res) {
   res.json(includeData)
 });
 
-app.get("/chat", async function (req, res) {
-  const { id } = req.body;
+app.get("/chat/:id", async function (req, res) {
+  const { id } = req.params;
   try {
-    const chats = await prisma.chat.findMany({
+    const chats = await prisma.friend.findMany({
       where: {
-        id: id,
+        OR: [
+          { invitedUserId: Number(id) },
+          { userEnvId: Number(id) }
+        ]
       },
       include: {
-        friend: {
-          include: {
-            userEnv: true,
-            invitedUser: true,
-          },
-        },
+      chat:{
+        include:{
+          messages:true
+        }
+      } 
       },
     });
     res.json(chats);
@@ -246,7 +275,7 @@ app.post("/user/login", async function (req, res) {
           id: userExists.id,
          }, 
          secret,
-         {expiresIn: '1min'}
+         {expiresIn: '1d'}
          ,
          )
       
@@ -376,7 +405,19 @@ app.post("/comment", async function (req, res) {
       res.status(500).json({ error: 'Error creating user' });
     }
   });
+
   
+
+app.delete("/user/:id", async function(req, res){
+  try {
+    const {id} = req.params
+    const deleteduser = await prisma.user.delete({where:{ id: Number(id)}})
+    res.json(deleteduser)
+  } catch (error) {
+    console.error(error)
+  }
+})
+
   async function uploadFile(name:any, imageBuffer:any) {
     try {
       const time = new Date().getTime();
