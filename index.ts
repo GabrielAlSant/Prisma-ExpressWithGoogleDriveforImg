@@ -7,6 +7,9 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt'
 import jwt, { JwtPayload } from 'jsonwebtoken'
 import dotenv from 'dotenv'
+
+const port = 8080
+
 dotenv.config();
 
 declare global {
@@ -124,23 +127,19 @@ app.get("/getinvite/:id", async function (req, res) {
 
 app.get("/getfriends/:id", async function (req, res) {
     const {id} = req.params
-    const mostrar = await prisma.user.findMany({
-      where:{
-        id: Number(id)
+    const mostrar = await prisma.friend.findMany({
+      where: {
+        OR: [
+          { invitedUserId: Number(id) },
+          { userEnvId: Number(id) }
+        ]
       },
-     include:{
-      friend:{
-        include:{
-          userEnv:true,
-          invitedUser:true
-        }
-      }
-     }
-    });
-
-  const includeData = mostrar.map((user) => user.friend);
-
-  res.json(includeData)
+      include: {
+        invitedUser: true,
+        userEnv: true
+       } 
+      })
+    res.json(mostrar);
 });
 
 app.get("/chat/:id", async function (req, res) {
@@ -474,6 +473,6 @@ app.delete("/user/:id", async function(req, res){
 
 
 
-  app.listen(3000, async () => {
-    console.log('Server is running on port 3000');
+  app.listen(port , async () => {
+    console.log('Server is running on port', port);
   });
