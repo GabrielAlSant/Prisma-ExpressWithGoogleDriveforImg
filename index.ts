@@ -136,7 +136,8 @@ app.get("/getfriends/:id", async function (req, res) {
       },
       include: {
         invitedUser: true,
-        userEnv: true
+        userEnv: true,
+        chat:true
        } 
       })
     res.json(mostrar);
@@ -219,8 +220,8 @@ app.post('/friend', async function (req, res) {
       }
   
    try {
-     const newFriend = await prisma.chatMessage.create({data:{ content, img:link, senderId, chatId: Number(chatId)}})
-     res.json(newFriend)
+     const newMessage = await prisma.chatMessage.create({data:{ content, img:link, senderId, chatId: Number(chatId)}})
+     res.json(newMessage)
    } catch (error) {
      console.log(error)
      res.json(error)
