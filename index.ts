@@ -8,6 +8,8 @@ import bcrypt from 'bcrypt'
 import jwt, { JwtPayload } from 'jsonwebtoken'
 import dotenv from 'dotenv'
 
+
+
 const port = 8080
 
 dotenv.config();
@@ -474,6 +476,38 @@ app.delete("/user/:id", async function(req, res){
 
 
 
-  app.listen(port , async () => {
-    console.log('Server is running on port', port);
+const server = app.listen(port, () => {
+  console.log('Server is running on port', port);
+});
+
+const io = require('socket.io')(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    credentials: true,
+  },
+});
+
+  declare global {
+    var onlineUsers: any;
+    var chatSocket: any;
+}
+
+global.onlineUsers = new Map();
+
+
+
+io.on("connection", (socket:any) => {
+  global.chatSocket = socket;
+  socket.on("add-user", (userId : number) => {
+    onlineUsers.set(userId, socket.id);
   });
+  
+  socket.on("send-msg", (data: any) => {
+    const received = Number(data.values.to)  
+    const sendUserSocket = onlineUsers.get(received);
+    console.log('idsocket',sendUserSocket)
+    if (sendUserSocket) {
+      socket.to(sendUserSocket).emit("msg-recieve", data.values);
+    }
+  });
+});
